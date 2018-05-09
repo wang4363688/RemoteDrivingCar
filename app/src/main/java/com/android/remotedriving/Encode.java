@@ -8,7 +8,7 @@ import android.util.Log;
 import java.nio.ByteBuffer;
 
 /**
- * Created by Money on 2017/12/12.
+ * Created by Money on 2017/12/12. xxxxjf
  */
 
 public class Encode {
