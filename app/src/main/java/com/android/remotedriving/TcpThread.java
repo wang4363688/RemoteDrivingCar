@@ -1,8 +1,11 @@
 package com.android.remotedriving;
 
+import android.app.Activity;
+import android.content.Context;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
+import android.telephony.TelephonyManager;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -23,28 +26,30 @@ import java.util.Date;
 public class TcpThread extends Thread {
     Message mes;
     Handler mhandler;
-    private static final String TCP_HOST = "2001:da8:215:6a01::f651";
-//    private static final String TCP_HOST = "10.112.57.170";
+//    private static final String TCP_HOST = "2001:da8:215:6a01::f651";
+    private static final String TCP_HOST = "10.112.192.176";
     private static final int TCP_PORT = 8889;
     InetAddress address;
     //Socket客户端
     DatagramSocket client = null;
     DatagramPacket packet;
     DatagramPacket packet2;
-    //输入流
-    InputStream is;
-    OutputStream os;
+
+    private String IMEI = "0";
+
     //字节
     String reply = null;
     String s ="ok";
     byte[] b = new byte[1024];
-    int l =0;
-    int a = 0;
-    int control = 0;
+
     public static String filename = "log_tcp";
 
-    public TcpThread(Handler handler){
+    public TcpThread(Context context, Handler handler){
         this.mhandler=handler;
+        TelephonyManager tm = (TelephonyManager) context.getSystemService(Activity.TELEPHONY_SERVICE);
+        if (tm != null) {
+            IMEI = tm.getDeviceId();
+        }
     }
     @Override
     public void run() {
@@ -53,7 +58,7 @@ public class TcpThread extends Thread {
 
         try {
             address = InetAddress.getByName(TCP_HOST);
-            byte[] data = "request".getBytes();
+            byte[] data = IMEI.getBytes();
             packet = new DatagramPacket(data, data.length, address, TCP_PORT);
             client = new DatagramSocket();
             client.send(packet);
@@ -70,7 +75,7 @@ public class TcpThread extends Thread {
                     packet2 = new DatagramPacket(b, b.length);
                     client.receive(packet2);
                     reply = new String(b, 0, packet2.getLength());
-                    System.out.println(reply);
+                    System.out.println("reply:"+reply);
                     mes = mhandler.obtainMessage();
 //                    mes.what = a;
                     mes.obj = reply;

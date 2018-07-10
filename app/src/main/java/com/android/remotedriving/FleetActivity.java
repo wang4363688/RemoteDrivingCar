@@ -16,6 +16,8 @@ import android.view.KeyEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.baidu.location.BDLocation;
@@ -28,6 +30,7 @@ import org.json.JSONObject;
 
 import ioio.lib.api.DigitalOutput;
 import ioio.lib.api.IOIO;
+import ioio.lib.api.PulseInput;
 import ioio.lib.api.PwmOutput;
 import ioio.lib.api.exception.ConnectionLostException;
 import ioio.lib.spi.Log;
@@ -46,16 +49,17 @@ import java.util.Date;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class MainActivity extends IOIOActivity implements SurfaceHolder.Callback,
-    Camera.PreviewCallback, Encode.IEncoderListener {
+import static java.lang.Thread.sleep;
+
+public class FleetActivity extends IOIOActivity implements SurfaceHolder.Callback,
+        Camera.PreviewCallback, Encode.IEncoderListener {
 
     private Camera camera;
     private boolean isPreview = false;
     private SurfaceView surfaceView;
 
-    private static final String TAG = "MainActivity";
     private static final String VLC_HOST = "10.30.176.175";
-    private static final String NEXT_CAR_HOST = "10.112.171.47";
+    private static final String NEXT_CAR_HOST = "1.112.171.47";
     //    private static final String VLC_HOST = "10.210.26.205";
     private static final int VLC_PORT = 5501;
     private static final int GPS_PORT = 8901;
@@ -77,6 +81,11 @@ public class MainActivity extends IOIOActivity implements SurfaceHolder.Callback
     private Encode encode;
     private LocationClient mLocationClient;
     public static String filename = "log_gps";
+
+    private ProgressBar progressBar1_;
+    private TextView textView2_;
+    private int echoSeconds;
+    private int echoDistanceCm;
 
 
     Handler mMessageHandler = new Handler() {
@@ -166,6 +175,11 @@ public class MainActivity extends IOIOActivity implements SurfaceHolder.Callback
         surfaceView.getHolder().setFixedSize(width, height);
         surfaceView.getHolder().setKeepScreenOn(true);
         surfaceView.getHolder().addCallback(this);
+
+		/* ultrasonic sensor */
+        progressBar1_ = (ProgressBar) findViewById(R.id.progressBar1);
+        textView2_ = (TextView) findViewById(R.id.textView2);
+
         TelephonyManager tm = (TelephonyManager) getSystemService(Activity.TELEPHONY_SERVICE);
         if (tm != null) {
             IMEI = tm.getDeviceId();
@@ -185,7 +199,7 @@ public class MainActivity extends IOIOActivity implements SurfaceHolder.Callback
             e.printStackTrace();
         }
         tcpThread.start();
-//        carThread.start();
+        carThread.start();
         executor = Executors.newSingleThreadExecutor();
         executor_1 = Executors.newSingleThreadExecutor();
     }
@@ -296,7 +310,7 @@ public class MainActivity extends IOIOActivity implements SurfaceHolder.Callback
     @Override
     public void onBackPressed() {
         if (!isQuit) {
-            Toast.makeText(MainActivity.this, "再按一次退出程序", Toast.LENGTH_SHORT).show();
+            Toast.makeText(FleetActivity.this, "再按一次退出程序", Toast.LENGTH_SHORT).show();
             isQuit = true;
             //这段代码意思是,在两秒钟之后isQuit会变成false
             new Thread(new Runnable() {
@@ -379,7 +393,9 @@ public class MainActivity extends IOIOActivity implements SurfaceHolder.Callback
 
     class Looper extends BaseIOIOLooper {
         private PwmOutput pwm1,pwm2, pwm3, pwm4;
-      //  private DigitalOutput D1A, D2A, D1B, D2B;
+        private DigitalOutput triggerPin_, led_;
+        private PulseInput echoPin_;
+        //  private DigitalOutput D1A, D2A, D1B, D2B;
         /**
          * Called every time a connection with IOIO has been established.
          * Typically used to open pins.
@@ -393,6 +409,9 @@ public class MainActivity extends IOIOActivity implements SurfaceHolder.Callback
         protected void setup() throws ConnectionLostException {
             showVersions(ioio_, "IOIO connected!");
 //            executor = Executors.newSingleThreadExecutor();
+            led_ = ioio_.openDigitalOutput(0, true);
+            echoPin_ = ioio_.openPulseInput(7, PulseInput.PulseMode.POSITIVE);
+            triggerPin_ = ioio_.openDigitalOutput(6);
 
             pwm1 = ioio_.openPwmOutput(1, 100);
             pwm2 = ioio_.openPwmOutput(2, 100);
@@ -414,6 +433,34 @@ public class MainActivity extends IOIOActivity implements SurfaceHolder.Callback
          */
         @Override// 档位和 小车行进的要分开
         public void loop() throws ConnectionLostException, InterruptedException {
+
+            try {
+                // read HC-SR04 ultrasonic sensor
+                triggerPin_.write(false);
+                sleep(5);
+                triggerPin_.write(true);
+                sleep(1);
+                triggerPin_.write(false);
+                echoSeconds = (int) (echoPin_.getDuration() * 1000 * 1000);
+                echoDistanceCm = echoSeconds / 29 / 2;
+				/* update UI */
+                updateViews();
+
+                if(echoDistanceCm >50 ){
+                    State = 7;
+                } else {
+                    State = 0;
+                }
+
+                sleep(20);
+            } catch (InterruptedException e) {
+                ioio_.disconnect();
+
+            } catch (ConnectionLostException e) {
+                throw e;
+
+            }
+
             switch (State){
                 case 0://brake
                     pwm1.setDutyCycle(0.0f);
@@ -502,6 +549,8 @@ public class MainActivity extends IOIOActivity implements SurfaceHolder.Callback
                     break;
             }
 
+
+
         }
 
         /**
@@ -538,16 +587,16 @@ public class MainActivity extends IOIOActivity implements SurfaceHolder.Callback
     }
 
     private void showVersions(IOIO ioio, String title) {
-            toast(String.format("%s\n" +
-                            "IOIOLib: %s\n" +
-                            "Application firmware: %s\n" +
-                            "Bootloader firmware: %s\n" +
-                            "Hardware: %s",
-                    title,
-                    ioio.getImplVersion(IOIO.VersionType.IOIOLIB_VER),
-                    ioio.getImplVersion(IOIO.VersionType.APP_FIRMWARE_VER),
-                    ioio.getImplVersion(IOIO.VersionType.BOOTLOADER_VER),
-                    ioio.getImplVersion(IOIO.VersionType.HARDWARE_VER)));
+        toast(String.format("%s\n" +
+                        "IOIOLib: %s\n" +
+                        "Application firmware: %s\n" +
+                        "Bootloader firmware: %s\n" +
+                        "Hardware: %s",
+                title,
+                ioio.getImplVersion(IOIO.VersionType.IOIOLIB_VER),
+                ioio.getImplVersion(IOIO.VersionType.APP_FIRMWARE_VER),
+                ioio.getImplVersion(IOIO.VersionType.BOOTLOADER_VER),
+                ioio.getImplVersion(IOIO.VersionType.HARDWARE_VER)));
     }
     private void toast(final String message) {
         final Context context = this;
@@ -558,6 +607,17 @@ public class MainActivity extends IOIOActivity implements SurfaceHolder.Callback
             }
         });
     }
+
+    private void updateViews() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                textView2_.setText(String.valueOf(echoDistanceCm));
+                progressBar1_.setProgress(echoDistanceCm);
+            }
+        });
+    }
+
     public void writelog(String log, String filename){
         SimpleDateFormat sdf4 = new SimpleDateFormat("HH:mm:ss.SSS");
         String str4 = sdf4.format(new Date());

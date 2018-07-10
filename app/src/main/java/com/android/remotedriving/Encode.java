@@ -2,6 +2,7 @@ package com.android.remotedriving;
 
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
+import android.media.MediaCodecList;
 import android.media.MediaFormat;
 import android.util.Log;
 
@@ -21,6 +22,7 @@ public class Encode {
     private int videoBitrate;
     private int videoFrameRate;
 
+    byte[] m_info = null;
     private byte[] yuv420 = null;
     private byte[] rotateYuv420 = null;
 
@@ -42,12 +44,16 @@ public class Encode {
         try {
             codec = MediaCodec.createEncoderByType(MIME);
             yuv420 = new byte[getYuvBuffer(videoW, videoH)];
-//            rotateYuv420 = new byte[getYuvBuffer(videoW, videoH)];
+//            int colorFormat = selectColorFormat(selectCodec(MIME), MIME);
+
+            rotateYuv420 = new byte[getYuvBuffer(videoW, videoH)];
             MediaFormat format = MediaFormat.createVideoFormat(MIME, videoW, videoH);
             format.setInteger(MediaFormat.KEY_BIT_RATE, videoBitrate);
             format.setInteger(MediaFormat.KEY_FRAME_RATE, videoFrameRate);
             format.setInteger(MediaFormat.KEY_COLOR_FORMAT,
                 MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible);
+//            format.setInteger(MediaFormat.KEY_COLOR_FORMAT,
+//                    colorFormat);
             format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
 
             codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
@@ -175,5 +181,24 @@ public class Encode {
             default:
                 return false;
         }
+    }
+
+    private MediaCodecInfo selectCodec(String mimeType) {
+        int numCodecs = MediaCodecList.getCodecCount();
+        for (int i = 0; i < numCodecs; i++) {
+            MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
+
+            if (!codecInfo.isEncoder()) {
+                continue;
+            }
+
+            String[] types = codecInfo.getSupportedTypes();
+            for (int j = 0; j < types.length; j++) {
+                if (types[j].equalsIgnoreCase(mimeType)) {
+                    return codecInfo;
+                }
+            }
+        }
+        return null;
     }
 }
