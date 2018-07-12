@@ -58,7 +58,7 @@ public class FleetActivity extends IOIOActivity implements SurfaceHolder.Callbac
     private boolean isPreview = false;
     private SurfaceView surfaceView;
 
-    private static final String VLC_HOST = "10.30.176.175";
+    private static final String VLC_HOST = "10.112.72.104";
     private static final String NEXT_CAR_HOST = "1.112.171.47";
     //    private static final String VLC_HOST = "10.210.26.205";
     private static final int VLC_PORT = 5501;
@@ -446,11 +446,16 @@ public class FleetActivity extends IOIOActivity implements SurfaceHolder.Callbac
 				/* update UI */
                 updateViews();
 
-                if(echoDistanceCm >50 ){
+                if(echoDistanceCm >90){
                     State = 7;
-                } else {
+                } else if (echoDistanceCm > 60 && echoDistanceCm <= 90){
+                    State = 4;
+                } else if (echoDistanceCm <= 60 && echoDistanceCm > 10){
                     State = 0;
+                }else if (echoDistanceCm <= 10 ){
+                    State = 1;
                 }
+
 
                 sleep(20);
             } catch (InterruptedException e) {

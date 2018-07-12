@@ -27,7 +27,7 @@ public class TcpThread extends Thread {
     Message mes;
     Handler mhandler;
 //    private static final String TCP_HOST = "2001:da8:215:6a01::f651";
-    private static final String TCP_HOST = "10.112.192.176";
+    private static final String TCP_HOST = "10.112.72.104";
     private static final int TCP_PORT = 8889;
     InetAddress address;
     //Socket客户端
