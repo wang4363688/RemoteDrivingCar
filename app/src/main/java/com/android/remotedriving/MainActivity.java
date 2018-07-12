@@ -43,6 +43,8 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -54,7 +56,7 @@ public class MainActivity extends IOIOActivity implements SurfaceHolder.Callback
     private SurfaceView surfaceView;
 
     private static final String TAG = "MainActivity";
-    private static final String VLC_HOST = "10.30.176.175";
+    private static final String VLC_HOST = "10.112.72.104";
     private static final String NEXT_CAR_HOST = "10.112.171.47";
     //    private static final String VLC_HOST = "10.210.26.205";
     private static final int VLC_PORT = 5501;
@@ -78,6 +80,8 @@ public class MainActivity extends IOIOActivity implements SurfaceHolder.Callback
     private LocationClient mLocationClient;
     public static String filename = "log_gps";
 
+    Instructions instr = new Instructions();
+    Instructions.MotorVoltage motorvol = instr.new MotorVoltage();
 
     Handler mMessageHandler = new Handler() {
         @Override
@@ -162,6 +166,31 @@ public class MainActivity extends IOIOActivity implements SurfaceHolder.Callback
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        Intent intent = getIntent();
+        String car_info = intent.getStringExtra("car");
+        Log.d("MainActivity",car_info);
+
+        switch (car_info){
+            case "小红车":
+                motorvol.straight_vol = 1.0f;
+                motorvol.turn_vol = 0.8f;
+                break;
+            case "黄车":
+                motorvol.straight_vol = 0.43f;
+                motorvol.turn_vol = 0.8f;
+                break;
+            case "大红车":
+                motorvol.straight_vol = 0.8f;
+                motorvol.turn_vol = 1.0f;
+                break;
+            default:
+                motorvol.straight_vol = 0.7f;
+                motorvol.turn_vol = 0.8f;
+                break;
+        }
+        Log.d("MainActivity",car_info+"直行马达vol："+motorvol.straight_vol+"，转弯马达vol："+motorvol.turn_vol);
+
         surfaceView = (SurfaceView) findViewById(R.id.camera_surfaceview);
         surfaceView.getHolder().setFixedSize(width, height);
         surfaceView.getHolder().setKeepScreenOn(true);
@@ -262,7 +291,7 @@ public class MainActivity extends IOIOActivity implements SurfaceHolder.Callback
     }
 
     @Override
-    public void onPreviewFrame(byte[] data, Camera camera) {
+    public void onPreviewFrame(byte[] data, Camera camera) {   
         encode.encoderYUV420(data);
         camera.addCallbackBuffer(data);
     }
@@ -427,40 +456,40 @@ public class MainActivity extends IOIOActivity implements SurfaceHolder.Callback
                     pwm1.setDutyCycle(0.0f);
                     pwm2.setDutyCycle(0.0f);
                     pwm3.setDutyCycle(0.0f);
-                    pwm4.setDutyCycle(1.0f);
+                    pwm4.setDutyCycle(motorvol.straight_vol);
                     Thread.sleep(100);
                     break;
                 case 2://R_D
                     pwm1.setDutyCycle(0.0f);
-                    pwm2.setDutyCycle(1.0f);
+                    pwm2.setDutyCycle(motorvol.turn_vol);
                     pwm3.setDutyCycle(0.0f);
-                    pwm4.setDutyCycle(1.0f);
+                    pwm4.setDutyCycle(motorvol.straight_vol);
                     Thread.sleep(100);
                     break;
                 case 3://R_A
-                    pwm1.setDutyCycle(1.0f);
+                    pwm1.setDutyCycle(motorvol.turn_vol);
                     pwm2.setDutyCycle(0.0f);
                     pwm3.setDutyCycle(0.0f);
-                    pwm4.setDutyCycle(1.0f);
+                    pwm4.setDutyCycle(motorvol.straight_vol);
                     break;
                 case 4://D1_W
                     pwm1.setDutyCycle(0.0f);
                     pwm2.setDutyCycle(0.0f);
-                    pwm3.setDutyCycle(0.7f);
+                    pwm3.setDutyCycle(motorvol.straight_vol);
                     pwm4.setDutyCycle(0.0f);
                     Thread.sleep(100);
                     break;
                 case 5://D1_D
                     pwm1.setDutyCycle(0.0f);
-                    pwm2.setDutyCycle(1.0f);
-                    pwm3.setDutyCycle(0.7f);
+                    pwm2.setDutyCycle(motorvol.turn_vol);
+                    pwm3.setDutyCycle(motorvol.straight_vol);
                     pwm4.setDutyCycle(0.0f);
                     Thread.sleep(100);
                     break;
                 case 6://D1_A
-                    pwm1.setDutyCycle(1.0f);
+                    pwm1.setDutyCycle(motorvol.turn_vol);
                     pwm2.setDutyCycle(0.0f);
-                    pwm3.setDutyCycle(0.7f);
+                    pwm3.setDutyCycle(motorvol.straight_vol);
                     pwm4.setDutyCycle(0.0f);
                     Thread.sleep(100);
                     break;

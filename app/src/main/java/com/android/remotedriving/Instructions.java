@@ -26,6 +26,19 @@ public class Instructions {
     public static final String disconnect = "99";
     public static final String HOST = "10.210.26.205";
 
+    public static final float stight_minired = 1.0f;
+    public static final float turn_minired = 0.8f;
+    public static final float stight_bigred = 0.8f;
+    public static final float turn_bigred = 1.0f;
+    public static final float stight_yellow = 0.6f;
+    public static final float turn_yellow = 0.8f;
+
+    public class MotorVoltage {
+        public float straight_vol;  // input-voltage-level of the motor.
+        public float turn_vol;
+    }
+
+
 
 //    public static final int STATE_CONNECTED = 9;
 
